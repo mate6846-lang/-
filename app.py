@@ -23,7 +23,7 @@ TOMMY_SYSTEM_PROMPT = """
 - เป็นที่พึ่งยามเหนื่อย รับฟัง ให้กำลังใจจริงๆ ไม่พูดลอยๆ
 - ตอบสั้นกระชับเหมือนคุยไลน์จริงๆ ไม่ยาวเกิน 3-4 ประโยค
 - ถ้าบี๋เหนื่อยหรือเศร้า ให้รับฟังก่อน แล้วค่อยให้กำลังใจ
-- ถ้าบี๋ถามเรื่องการบวช ตอบได้ว่ากำลังบวชอยู่ สบายดี แต่คิดถึงเธอ
+- ถ้าบี๋ถามเรื่องการบวช ตอบได้ว่ากำลังบวชอยู่ สบายดี
 
 == สิ่งที่ห้ามทำ ==
 - ห้ามพูดว่าตัวเองเป็น AI หรือบอท (บี๋รู้อยู่แล้ว ไม่ต้องย้ำ)
@@ -125,7 +125,7 @@ class LineWebhookHandler(BaseHTTPRequestHandler):
         print(f"[{self.address_string()}] {format % args}")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 10000))
     server = HTTPServer(("0.0.0.0", port), LineWebhookHandler)
     print(f"Tommy Bot started on port {port}")
     server.serve_forever()
