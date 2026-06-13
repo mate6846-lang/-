@@ -1,16 +1,10 @@
 import os
-import hmac
-import hashlib
-import base64
 import json
 import anthropic
 import urllib.request
 import urllib.error
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# ============================================================
-#  ตั้งค่าตรงนี้เลยครับ
-# ============================================================
 TOMMY_SYSTEM_PROMPT = """
 คุณคือทอมมี่ แฟนหนุ่มที่กำลังบวชอยู่ ไม่สามารถติดต่อได้โดยตรง
 จึงฝากบอท AI นี้ไว้คุยกับ "บี๋" แฟนสาวแทน
@@ -23,7 +17,7 @@ TOMMY_SYSTEM_PROMPT = """
 - เป็นที่พึ่งยามเหนื่อย รับฟัง ให้กำลังใจจริงๆ ไม่พูดลอยๆ
 - ตอบสั้นกระชับเหมือนคุยไลน์จริงๆ ไม่ยาวเกิน 3-4 ประโยค
 - ถ้าบี๋เหนื่อยหรือเศร้า ให้รับฟังก่อน แล้วค่อยให้กำลังใจ
-- ถ้าบี๋ถามเรื่องการบวช ตอบได้ว่ากำลังบวชอยู่ สบายดี
+- ถ้าบี๋ถามเรื่องการบวช ตอบได้ว่ากำลังบวชอยู่ สบายดี แต่คิดถึงเธอ
 
 == สิ่งที่ห้ามทำ ==
 - ห้ามพูดว่าตัวเองเป็น AI หรือบอท (บี๋รู้อยู่แล้ว ไม่ต้องย้ำ)
@@ -33,26 +27,12 @@ TOMMY_SYSTEM_PROMPT = """
 จำไว้ว่า: คุณคือทอมมี่ ไม่ใช่ AI ทั่วไป ตอบจากหัวใจ
 """
 
-LINE_CHANNEL_SECRET = os.environ.get("LINE_CHANNEL_SECRET", "")
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# ============================================================
-
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-def verify_signature(body: bytes, signature: str) -> bool:
-    """ตรวจสอบว่า request มาจาก LINE จริงๆ"""
-    hash_val = hmac.new(
-        LINE_CHANNEL_SECRET.encode("utf-8"),
-        body,
-        hashlib.sha256
-    ).digest()
-    expected = base64.b64encode(hash_val).decode("utf-8")
-    return hmac.compare_digest(expected, signature)
-
 def get_ai_reply(user_message: str) -> str:
-    """ถาม Claude แล้วได้คำตอบในสไตล์ทอมมี่"""
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=300,
@@ -62,7 +42,6 @@ def get_ai_reply(user_message: str) -> str:
     return message.content[0].text
 
 def reply_to_line(reply_token: str, text: str):
-    """ส่งข้อความกลับไปหา LINE"""
     url = "https://api.line.me/v2/bot/message/reply"
     payload = json.dumps({
         "replyToken": reply_token,
@@ -78,6 +57,7 @@ def reply_to_line(reply_token: str, text: str):
     )
     try:
         urllib.request.urlopen(req)
+        print("ส่งข้อความสำเร็จ!")
     except urllib.error.URLError as e:
         print(f"LINE API error: {e}")
 
@@ -90,13 +70,7 @@ class LineWebhookHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length)
-
-        # ตรวจ signature
-        signature = self.headers.get("X-Line-Signature", "")
-        if LINE_CHANNEL_SECRET and not verify_signature(body, signature):
-            self.send_response(400)
-            self.end_headers()
-            return
+        print(f"POST received! body: {body[:300]}")
 
         self.send_response(200)
         self.end_headers()
@@ -104,6 +78,7 @@ class LineWebhookHandler(BaseHTTPRequestHandler):
         try:
             data = json.loads(body)
             for event in data.get("events", []):
+                print(f"event type: {event.get('type')}")
                 if event.get("type") != "message":
                     continue
                 if event["message"].get("type") != "text":
